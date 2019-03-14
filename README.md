@@ -8,5 +8,7 @@ To successfully run our program:
       - A few python dependencies might be left out. If so, please lmk what they are
   2. Install ImageMagick from:
       - https://www.imagemagick.org/
+  4. Get necessary permissions to use the API
+      - Just a json file
   3. Navigate to the root project directory and run:
       - python text2Speech.py OR python3 text2Speech.py
