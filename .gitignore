@@ -1,1 +1,7 @@
+.ipynb_checkpoints/
+.env
 LyricTracker-a790c34259ed.json
+tmp*
+soundfiles/
+movieFiles/
+*.wav
