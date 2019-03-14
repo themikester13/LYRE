@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "lyrictracker",
+  "private_key_id": "a790c34259eda6eae82ab1f4658631900b163df8",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDcy6liItAIs5Ug\nVhxYq4QSzVUuDpebntm24sQ6td2s3YFpn+CzUu/EMe6B0UmDHlPxusJ264WSINZj\nuPOBuFR5ctjrXUSvHI7LVp23IrffeyAq9R8jvlWuA5lxkEFkw3qafhWpRygs7rUI\nOBdhD4Ka9B/dTT8anYF8Zaou5XsakAjtekodBKhQVWExfhljb7neF+74RHZpF38b\nsoZdjke3pHSankKtdvBqzpTO+ldIQiuCS3e6x5afXYCyVWYiZOkL8/0aOlOgyit1\nxD2U3pbwLucwTWAIy7Y6JLqLSqfAmrESOPxDTycFbG1cI008DLbTi2jGhdQG/eO/\nImd6yTYdAgMBAAECggEAE77u/gTJAA43ZvXsgQ2NuTS9ymmpq1Qwekebbvi2w2/n\n0+9lZAQlxzED+H4kCeLbdQHTxFjZ0DC5m599v3shqt7XgW0M6HAwYQT1A9zJ/uV/\nAfh7+XFbLj3KKjrRblaBD3H5M/NWJ3aNoBeMF7UQZBUzCFKRMysk2mApMRp6wOw4\nKfXO/DPgOW+Glf6vuQUbM/okWQIi3XFUepMSqnVfPOMQmCyzU2lrdUodkPiNeHLA\n4GPRzDCbpHHabqzLyq5nOvDQzP6wGupNfpQRgloQ/9qUwEp6qN0xxxi1volzK+JM\nEZ1zucVYCS7a7HGWSWjAGlF6aultsIU3cxnvKDWYjQKBgQDtwXObwgFxs0YMVWl+\nMyoZXEIUrjxkZ8ruXI/czrQx/6299e2hTjfMU+/mzZJWYNuuK2wb2DQnXtNMlnCh\nSHmNGbKguW9/aZPyxSFawZyB+6n+FW9a5wbzJEc1SvXZ/OphpPugvGu+zkUetNy+\nt5PN/9ddRkomc9M7xLw0HMJstwKBgQDtvQpD3eErSYOD91LypVaFVeEx5twtzZM9\noWjuPb06ARGC1IFN/BuBRLUPctWS4KoAoX0eH4iQ4d3lo6L3+l0weJvJaHVYfd2q\nyJdZ3+ZXb/kc3p/eHKoiP46ZrpxzB4tyl39tpM4Zs7rC6aULkb+71cZFOheSwis5\nrQcZ5XwHywKBgQCOTP/d1MM6gztEvIZUY1kqLp7ac+JvkfPSsJHmbc1KM6aQkLY2\nmnMpF3/520Zf7r7tQs4E6GVmvwmmyFAHKDKgMiZIrlQ+pTlIz5YEFOeQoMkA62Fn\nvejZ8/euvPvjCc5avP1iGgQ/AoQ6ObP5bjTH0f3btOtCkoZ2Om0On7v6hwKBgHMs\nsDps1ddoyAQ438CaBS6Xin/ofibaf0jOV82Dr5bYSal+Vh530sNvi+AuG/YKTZH8\nqmbblAfMxPmpqxxD+L2w0JhkuOTkJW3FvD1YUXluz9sCp6StcmchL26Yv0ajExWy\n+5Mc0pR1FDe1hbXzKFZRnLqRCDabRuGsR9Jt8Qa9AoGAeCKzorMU0Xi1zyBLEVDs\nr+u0unEuVPP2g9tdu5664PZ6VKWVjuD4zVoCzSEkWe+H92VN9Y3Vl5n6MknuJW7e\nioXpboIeO6rQC5FJQKKWkKba6AkWpVmRX4qKdoLJMeeCK7TAKdnWo41o3X2ti1vs\nemnNc/H+hpvmTTuAy00JLO8=\n-----END PRIVATE KEY-----\n",
+  "client_email": "lyre-961@lyrictracker.iam.gserviceaccount.com",
+  "client_id": "108233616703119152407",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/lyre-961%40lyrictracker.iam.gserviceaccount.com"
+}

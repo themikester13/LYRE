@@ -1,0 +1,247 @@
+#libraries to determine length of wav file
+import wave
+import contextlib
+
+#library to load env variables
+from dotenv import load_dotenv
+import os
+import io
+
+#libraries to make video and process audio
+from pydub import AudioSegment
+from moviepy.editor import *
+#import gizeh
+import moviepy.editor as mpy
+from moviepy.video.tools.subtitles import SubtitlesClip
+from moviepy.video.io.VideoFileClip import VideoFileClip
+
+#import Google Cloud client Library
+from google.cloud import speech
+from google.cloud.speech import enums
+from google.cloud.speech import types
+
+#syllable separator
+import pyphen
+
+#import audio library
+import numpy as np, scipy as sp, sklearn, librosa, cmath,math
+#from IPython.display import Audio
+
+
+load_dotenv()
+
+#set credentials
+def loadCredentials():
+	os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './LyricTracker-a790c34259ed.json'
+#function that takes in a wav stereo and produces a mono version.
+#could be replaced by api from wav converter site
+#or manual change for now
+
+
+#install the dictionary for syllable processing
+
+def getFilePath(filename):
+	return os.path.join(os.path.dirname(__file__), 'soundfiles', 'foreground', filename)	
+
+def stereoToMono(filepath):
+	sound = AudioSegment.from_wav(filepath)
+	sound = sound.set_channels(1)
+	sound.export(filepath, format="wav")
+
+def durationToSec(duration):
+	sec = duration.seconds
+	nano = duration.nanos
+	sec = float(sec) + float(nano)/(10.0**9)
+	return sec
+
+def convertToPython(wordInfo):
+	startEnd = {}
+#	print(wordInfo.word, wordInfo.start_time.seconds)
+	startEnd["word"] = wordInfo.word
+	startEnd["start"] = durationToSec(wordInfo.start_time)
+	startEnd["end"] = durationToSec(wordInfo.end_time)
+	return startEnd
+
+def getSpeechInfo(path2File):
+	#gets path to file. Assumes its in soundfiles/foreground/ directory	
+	client = speech.SpeechClient()
+	
+	#loading audio into proper file
+#	stereoToMono(path2File)
+	with io.open(path2File, 'rb') as audio_file:
+		content = audio_file.read()
+		audio = types.RecognitionAudio(content = content)
+	
+	config = types.RecognitionConfig(encoding = enums.RecognitionConfig.AudioEncoding.LINEAR16, sample_rate_hertz= 44100, language_code = 'en-US', enable_word_time_offsets = True)
+
+	#get response
+#	operation = client.long_running_recognize(config, audio)
+	response = client.recognize(config, audio)	
+
+	#timeout if takes too long
+#	print('Waiting for operation to complete...')
+#	response = operation.result(timeout=90)
+
+#	print("the type is: ", type(response))
+	startEndTime = []
+	for result in response.results:
+		wordList = result.alternatives[0].words
+		for wordInfo in wordList:
+			startEndTime.append(convertToPython(wordInfo))
+	return startEndTime
+
+#Approximate Algorithm
+def approximate(startEndTime):
+	syllableStartEndTime = []
+	#print(startEndTime)
+	dic = pyphen.Pyphen(lang='en')
+	for word in startEndTime:	
+		syllables = (dic.inserted(word["word"])).split("-")
+		start = word["start"]
+		end = word["end"]
+		timeDuration = end-start
+		if(len(syllables) == 0):
+			timeStep = timeDuration/float(1)
+		else:
+			timeStep = timeDuration/float(len(syllables))
+		count = 0
+		for syll in syllables:
+			syllStart = start + timeStep * count
+			syllEnd = start + timeStep * (count+1)
+			formattedData = ((syllStart, syllEnd), syll)
+			syllableStartEndTime.append(formattedData)
+			#syllableStartEndTime.append({'syll': syll, 'start': syllStart, 'end': syllEnd})
+			count += 1
+	return syllableStartEndTime
+
+#process wav file
+def onsetModel(filepath, wordStartEndTime):
+	sr = 44100
+	syllModel = []
+	dic = pyphen.Pyphen(lang='en')
+	for word in wordStartEndTime:
+#		print(word)
+		start = word['start']
+		end = word['end']	
+		#get number of syllables, i.e. onsets, we want
+		syllables = (dic.inserted(word["word"])).split("-")
+		desiredOnsets = len(syllables)
+		#if it is single syllable
+		if desiredOnsets == 1:
+			syllModel.append(((start, end), syllables[0]))
+		#if we have multiple syllables
+		else:
+			#get audio signal
+			audio, sr = librosa.load(filepath, offset = start, duration = end-start)
+	
+			#perform onset detection returns n onsets
+			onsetFrames = librosa.onset.onset_detect(y = audio, sr = sr)
+			
+			#if the number of onsets is less than the desired n, we assume their length is the same
+			if len(onsetFrames) < desiredOnsets:
+				currStart = start
+				stepSize = (end - start)/desiredOnsets
+				for syll in syllables:
+					syllModel.append(((currStart, currStart+stepSize), syll))
+					currStart += stepSize
+
+			#else, we need to find n highest peaks
+			else:
+				#compute onset strength on the section
+				onsetStrengths = librosa.onset.onset_strength(y = audio, sr = sr)
+				
+				#corresponding strength to frames
+				strengthToFrames = []
+				for onsetFrame in onsetFrames:
+					strengthToFrames.append((onsetStrengths[onsetFrame], onsetFrame))
+				#sort in descending order
+				sortedFrames = np.sort(strengthToFrames)[::1]
+				#extract the highest frames and find the appropriate time
+				nHighestFrames = [frame[1] for frame in sortedFrames[:desiredOnsets]]
+				times = librosa.frames_to_time(nHighestFrames, sr = sr)
+				
+				for i in range(desiredOnsets-1):
+					syllStart = start + times[i]
+					syllEnd = start+times[i+1]
+					syllModel.append(((syllStart, syllEnd), syllables[i]))
+				syllModel.append(((start + times[desiredOnsets-1], end), syllables[desiredOnsets-1]))
+	return syllModel
+	
+
+def findLengthOfAudio(filepath):
+	with contextlib.closing(wave.open(filepath, 'r')) as f:
+		frames = f.getnframes()
+		rate = f.getframerate()
+		duration = frames / float(rate)
+	return duration
+
+def addSubtitles(startEndTimes, filepath, filename, vidLen):
+	video = VideoFileClip(filepath)
+	currVideo = video
+	generator = lambda text: TextClip(text, font="Times", fontsize=400, color='white').set_pos('center')
+	sub = SubtitlesClip(startEndTimes, generator)
+	final = CompositeVideoClip([video, sub.set_pos(('center', 'center'))])
+	path = './movieFiles/Karaoke/' + filename + '.avi'
+	final.write_videofile(path, codec = 'libx264', audio_codec = 'pcm_s32le', fps = 24)
+
+
+#def generateTextClips(startEndTimes, filepath, filename, vidLen):
+#	video = VideoFileClip(filepath)
+#	videoClips = []
+#	noVocalStart = 0
+#	noVocalEnd = 0
+	#if we do not start with vocals
+#	if startEndTimes[0]['start'] > noVocalStart:
+#		videoClips.append(video.subclip(0, startEndTimes[0]['start']))
+#	for i in range(len(startEndTimes)):
+#		start = startEndTimes[i]['start']
+#		end = startEndTimes[i]['end']
+#		duration = end - start
+#		videoClip = video.subclip(start, end)
+#		text = startEndTimes[i]['syll']
+#		text_clip = (TextClip(text, fontsize = 70, color = 'white').set_position('center').set_duration(duration))
+#		textOver = mpy.CompositeVideoClip([videoClip, text_clip])
+#		videoClips.append(textOver)
+#		if i < len(startEndTimes) - 1:
+#			videoClip = video.subclip(startEndTimes[i]['end'], startEndTimes[i+1]['start'])
+#			videoClips.append(videoClip)
+#		else:
+#			videoClip = video.subclip(startEndTimes[i]['end'], vidLen)
+
+#	compositeVideo = mpy.concatenate_videoclips(videoClips, method="compose")
+#	path = './movieFiles/Karaoke' + filename + '.avi',
+#	compositeVideo.write_videofile(path, codec = 'libx264', audio_codec = 'pcm_s32le', fps = 24)
+		
+def makeVideoWithAudio(filepath, filename):
+	#make blank black video
+	audioLength = findLengthOfAudio(filepath)
+	blankClip = ImageClip("./movieFiles/blackBackground.jpg", duration = audioLength)
+	#initialize relevant audio variables
+	song = mpy.AudioFileClip(filepath)
+	overlayedClip = blankClip.set_audio(song)
+	#output file
+	path = './movieFiles/Karaoke/' + filename + '.avi'
+	overlayedClip.write_videofile(path, codec = 'libx264', audio_codec = 'pcm_s32le', fps = 24)
+	return path
+	
+
+def main():
+	loadCredentials()
+	songName = "FixYou"
+	model = "onset"
+	filepath = getFilePath(songName + ".wav")
+#	startEndTime = getSpeechInfo(filepath)
+#	print(startEndTime)
+#	approx = approximate(startEndTime)
+	startEndTime = [{'word': 'when', 'start': 0.0, 'end': 0.4}, {'word': 'you', 'start': 0.4, 'end': 0.5}, {'word': 'try', 'start': 0.5, 'end': 1.0}, {'word': 'your', 'start': 1.0, 'end': 1.4}, {'word': 'best', 'start': 1.4, 'end': 1.7}, {'word': 'but', 'start': 1.7, 'end': 2.3}, {'word': 'you', 'start': 2.3, 'end': 2.5}, {'word': "don't", 'start': 2.5, 'end': 2.7}, {'word': 'succeed', 'start': 2.7, 'end': 3.1}, {'word': 'when', 'start': 7.0, 'end': 7.5}, {'word': 'you', 'start': 7.5, 'end': 7.6}, {'word': 'get', 'start': 7.6, 'end': 8.0}, {'word': 'what', 'start': 8.0, 'end': 8.4}, {'word': 'you', 'start': 8.4, 'end': 8.7}, {'word': 'want', 'start': 8.7, 'end': 9.4}, {'word': 'but', 'start': 9.4, 'end': 9.5}, {'word': 'not', 'start': 9.5, 'end': 9.8}, {'word': 'watching', 'start': 9.8, 'end': 10.5}, {'word': 'when', 'start': 14.0, 'end': 14.5}, {'word': 'you', 'start': 14.5, 'end': 14.6}, {'word': 'feel', 'start': 14.6, 'end': 14.9}, {'word': 'so', 'start': 14.9, 'end': 15.6}, {'word': 'tired', 'start': 15.6, 'end': 15.8}, {'word': 'but', 'start': 15.8, 'end': 16.6}, {'word': 'you', 'start': 16.6, 'end': 16.9}, {'word': "can't", 'start': 16.9, 'end': 17.0}, {'word': 'sleep', 'start': 17.0, 'end': 17.6}, {'word': 'cheer', 'start': 28.1, 'end': 29.2}, {'word': 'skirts', 'start': 29.2, 'end': 29.9}]
+	modelTimes = onsetModel(filepath, startEndTime)
+#	approx = [{'syll': 'when', 'start': 0.0, 'end': 0.4}, {'syll': 'you', 'start': 0.4, 'end': 0.5}, {'syll': 'try', 'start': 0.5, 'end': 1.0}, {'syll': 'your', 'start': 1.0, 'end': 1.4}, {'syll': 'best', 'start': 1.4, 'end': 1.7}, {'syll': 'but', 'start': 1.7, 'end': 2.3}, {'syll': 'you', 'start': 2.3, 'end': 2.5}, {'syll': "don't", 'start': 2.5, 'end': 2.7}, {'syll': 'suc', 'start': 2.7, 'end': 2.9000000000000004}, {'syll': 'ceed', 'start': 2.9000000000000004, 'end': 3.1}, {'syll': 'when', 'start': 7.0, 'end': 7.5}, {'syll': 'you', 'start': 7.5, 'end': 7.6}, {'syll': 'get', 'start': 7.6, 'end': 8.0}, {'syll': 'what', 'start': 8.0, 'end': 8.4}, {'syll': 'you', 'start': 8.4, 'end': 8.7}, {'syll': 'want', 'start': 8.7, 'end': 9.4}, {'syll': 'but', 'start': 9.4, 'end': 9.5}, {'syll': 'not', 'start': 9.5, 'end': 9.8}, {'syll': 'watch', 'start': 9.8, 'end': 10.15}, {'syll': 'ing', 'start': 10.15, 'end': 10.5}, {'syll': 'when', 'start': 14.0, 'end': 14.5}, {'syll': 'you', 'start': 14.5, 'end': 14.6}, {'syll': 'feel', 'start': 14.6, 'end': 14.9}, {'syll': 'so', 'start': 14.9, 'end': 15.6}, {'syll': 'tired', 'start': 15.6, 'end': 15.8}, {'syll': 'but', 'start': 15.8, 'end': 16.6}, {'syll': 'you', 'start': 16.6, 'end': 16.9}, {'syll': "can't", 'start': 16.9, 'end': 17.0}, {'syll': 'sleep', 'start': 17.0, 'end': 17.6}, {'syll': 'cheer', 'start': 28.1, 'end': 29.2}, {'syll': 'skirts', 'start': 29.2, 'end': 29.9}]
+#	approx = [((0.0, 0.4), 'when'), ((0.4, 0.5), 'you'), ((0.5, 1.0), 'try'), ((1.0, 1.4), 'your'), ((1.4, 1.7), 'best'), ((1.7, 2.3), 'but'), ((2.3, 2.5), 'you'), ((2.5, 2.7), "don't"), ((2.7, 2.9000000000000004), 'suc'), ((2.9000000000000004, 3.1), 'ceed'), ((7.0, 7.5), 'when'), ((7.5, 7.6), 'you'), ((7.6, 8.0), 'get'), ((8.0, 8.4), 'what'), ((8.4, 8.7), 'you'), ((8.7, 9.4), 'want'), ((9.4, 9.5), 'but'), ((9.5, 9.8), 'not'), ((9.8, 10.15), 'watch'), ((10.15, 10.5), 'ing'), ((14.0, 14.5), 'when'), ((14.5, 14.6), 'you'), ((14.6, 14.9), 'feel'), ((14.9, 15.6), 'so'), ((15.6, 15.8), 'tired'), ((15.8, 16.6), 'but'), ((16.6, 16.9), 'you'), ((16.9, 17.0), "can't"), ((17.0, 17.6), 'sleep'), ((28.1, 29.2), 'cheer'), ((29.2, 29.9), 'skirts')] 
+#	print(modelTimes)
+#	print("start end time", startEndTime)
+#	videoFile = makeVideoWithAudio(filepath, songName)	
+	videoFile = './movieFiles/Karaoke/' + songName+ '.avi'
+	videoLen = findLengthOfAudio(filepath)
+#	generateTextClips(approx, videoFile, "annotatedVid", videoLen)
+	addSubtitles(modelTimes, videoFile, songName +"AnnotatedVid" + model, videoLen)
+main()
