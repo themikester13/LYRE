@@ -32,7 +32,7 @@ load_dotenv()
 
 #set credentials
 def loadCredentials():
-	os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './LyricTracker-a790c34259ed.json'
+	os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './LyricTracker-2b18d11f97c8.json'
 #function that takes in a wav stereo and produces a mono version.
 #could be replaced by api from wav converter site
 #or manual change for now
