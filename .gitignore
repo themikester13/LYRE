@@ -2,7 +2,7 @@
 .env
 LyricTracker-a790c34259ed.json
 tmp*
-soundfiles/
-movieFiles/
+soundfiles/*
+movieFiles/*
 *.wav
 LyricTracker-2b18d11f97c8.json
