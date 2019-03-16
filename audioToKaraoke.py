@@ -39,23 +39,23 @@ def loadCredentials():
 #could be replaced by api from wav converter site
 #or manual change for now
 
-
-#install the dictionary for syllable processing
-
 def getFilePath(filename):
 	return os.path.join(os.path.dirname(__file__), 'soundfiles', 'foreground', filename)	
 
+#Function that turns multi channel to single channel, overwrites previous file
 def stereoToMono(filepath):
 	sound = AudioSegment.from_wav(filepath)
 	sound = sound.set_channels(1)
 	sound.export(filepath, format="wav")
 
+#converts duration from google api to seconds
 def durationToSec(duration):
 	sec = duration.seconds
 	nano = duration.nanos
 	sec = float(sec) + float(nano)/(10.0**9)
 	return sec
 
+#makes start and end times to seconds
 def convertToPython(wordInfo):
 	startEnd = {}
 #	print(wordInfo.word, wordInfo.start_time.seconds)
@@ -64,6 +64,7 @@ def convertToPython(wordInfo):
 	startEnd["end"] = durationToSec(wordInfo.end_time)
 	return startEnd
 
+#makes API Call
 def getSpeechInfo(path2File):
 	#gets path to file. Assumes its in soundfiles/foreground/ directory	
 	client = speech.SpeechClient()
@@ -95,14 +96,7 @@ def getSpeechInfo(path2File):
 	transcript = [t[1:] if t[0] == " " else t for t in transcript]				
 	return startEndTime, transcript
 
-#returns the lyricPosition
-def wordPos(word, lyrics):
-	for i in range(len(lyrics)):
-		if word == lyrics[i]:
-			return i
-	return 0
-
-#Approximate Algorithm
+#Approximate Algorithm returns a list of tuple of tuple ((start, end), lyric)
 def approximate(startEndTime, lyric):
 	syllableStartEndTime = []
 	#print(startEndTime)
@@ -124,7 +118,6 @@ def approximate(startEndTime, lyric):
 			timeStep = timeDuration/float(len(syllables))
 		#the list of words in the line
 		lyricLine = lyric[currLyricLine].split(" ")
-#		print(lyricLine)
 		#find where the word occurs in the line
 		#if its the last word, increment to the next line
 		if wordPosition == len(lyricLine) - 1:
@@ -135,10 +128,7 @@ def approximate(startEndTime, lyric):
 			syll = syllables[i]
 			syllStart = start + timeStep * count
 			syllEnd = start + timeStep * (count+1)
-#			print(lyricLine[:wordPosition])
 			textEmphasis = " ".join(lyricLine[:wordPosition] + ["".join(syllables[:i] + ["***" + syll + "***"] + syllables[i+1:])] + lyricLine[wordPosition+1:])
-			print(textEmphasis)
-#			print("The WORD position is: ", wordPosition)
 			formattedData = ((syllStart, syllEnd), textEmphasis)
 			syllableStartEndTime.append(formattedData)
 			count += 1
@@ -149,7 +139,7 @@ def approximate(startEndTime, lyric):
 			wordPosition += 1
 	return syllableStartEndTime
 
-#process wav file
+#process wav file for onsets. Returns ((start, end), lyric)
 def onsetModel(filepath, wordStartEndTime, lyrics):
 	sr = 44100
 	syllModel = []
@@ -158,7 +148,6 @@ def onsetModel(filepath, wordStartEndTime, lyrics):
 	moveToNextLine = False
 	wordPos = 0
 	for word in wordStartEndTime:
-#		print(word)
 		start = word['start']
 		end = word['end']	
 		#get number of syllables, i.e. onsets, we want
@@ -221,7 +210,7 @@ def onsetModel(filepath, wordStartEndTime, lyrics):
 			wordPos += 1			
 	return syllModel
 	
-
+#finds the length of audio
 def findLengthOfAudio(filepath):
 	with contextlib.closing(wave.open(filepath, 'r')) as f:
 		frames = f.getnframes()
@@ -229,6 +218,7 @@ def findLengthOfAudio(filepath):
 		duration = frames / float(rate)
 	return duration
 
+#adds lyrics to the Sound Video File
 def addSubtitles(startEndTimes, filepath, filename, vidLen):
 	video = VideoFileClip(filepath)
 	currVideo = video
@@ -238,6 +228,7 @@ def addSubtitles(startEndTimes, filepath, filename, vidLen):
 	path = './movieFiles/Karaoke/' + filename + '.avi'
 	final.write_videofile(path, codec = 'libx264', audio_codec = 'pcm_s32le', fps = 24)
 
+#Creates video with only audio
 def makeVideoWithAudio(filepath, filename):
 	#make blank black video
 	audioLength = findLengthOfAudio(filepath)
@@ -249,7 +240,8 @@ def makeVideoWithAudio(filepath, filename):
 	path = './movieFiles/Karaoke/' + filename + '.avi'
 	overlayedClip.write_videofile(path, codec = 'libx264', audio_codec = 'pcm_s32le', fps = 24)
 	return path
-	
+
+#Helper function to wrun specific type of model
 def runModel(songName, model):
 	filepath = getFilePath(songName + ".wav")
 	startEndTime, lyrics = getSpeechInfo(filepath)
@@ -279,5 +271,6 @@ def main():
 	args = sys.argv
 	songName = args[1]
 	model = args[2]
+	#run the desired Model
 	runModel(songName, model)
 main()
