@@ -11,7 +11,7 @@ To successfully run our program:
   4. Get necessary permissions to use the API
       - Just a json file
   3. Navigate to the root project directory through console/terminal and run:
-      - python text2Speech.py "Song Title" "model name" OR python3 text2Speech.py "Song Title" "model name"
+      - python audioToKaraoke.py "Song Title" "model name" OR python3 audioToKaraoke.py "Song Title" "model name"
       - Note: "Song Title" is the title of the .wav file located in musicfile/foreground and "model name" is either "approx" or "onset"
       
 What we have currently:
