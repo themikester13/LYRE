@@ -24,7 +24,7 @@ from google.cloud.speech import types
 import pyphen
 
 #import audio library
-import numpy as np, scipy as sp, sklearn, librosa, cmath,math
+import numpy as np, scipy as sp, sklearn, librosa, cmath, math, matplotlib.pyplot as plt
 #from IPython.display import Audio
 
 #import libraries to accept input from console
@@ -70,20 +70,43 @@ def getSpeechInfo(path2File):
 	client = speech.SpeechClient()
 	
 	#loading audio into proper file
-#	stereoToMono(path2File)
+	stereoToMono(path2File)
 	with io.open(path2File, 'rb') as audio_file:
 		content = audio_file.read()
 		audio = types.RecognitionAudio(content = content)
+
+	print('Waiting for transcription to complete...')
+	# test different models and return the one with the highest connfidence
+	highest_confidence = 0
+	for model in ['default','command_and_search', 'phone_call', 'video']:
 	
-	config = types.RecognitionConfig(encoding = enums.RecognitionConfig.AudioEncoding.LINEAR16, sample_rate_hertz= 44100, language_code = 'en-US', enable_word_time_offsets = True)
+		config = types.RecognitionConfig(encoding = enums.RecognitionConfig.AudioEncoding.LINEAR16,
+										 sample_rate_hertz= 44100,
+										 language_code = 'en-US',
+										 enable_word_time_offsets = True,
+										 model=model)
 
-	#get response
-#	operation = client.long_running_recognize(config, audio)
-	response = client.recognize(config, audio)	
-
-	#timeout if takes too long
-#	print('Waiting for operation to complete...')
-#	response = operation.result(timeout=90)
+		#get response
+	#	operation = client.long_running_recognize(config, audio)
+		response = client.recognize(config, audio)
+		
+		confidence = np.mean([result.alternatives[0].confidence for result in response.results])
+		
+		# print urrent model's transcript
+		# print('Model: ' + model)
+		# print('Confidence: ' + str(confidence))
+		# print('Transcribed Lyrics:\n')
+		# for result in response.results:
+		# 	print(result.alternatives[0].transcript, end=" ")
+		# print('\n')
+		
+		if confidence > highest_confidence:
+			highest_confidence = confidence
+			chosen_response = response
+			chosen_model = model
+			
+		#timeout if takes too long
+	#	response = operation.result(timeout=90)
 
 #	print("the type is: ", type(response))
 	startEndTime = []
@@ -93,7 +116,9 @@ def getSpeechInfo(path2File):
 		transcript.append(result.alternatives[0].transcript)
 		for wordInfo in wordList:
 			startEndTime.append(convertToPython(wordInfo))
-	transcript = [t[1:] if t[0] == " " else t for t in transcript]				
+	transcript = [t[1:] if t[0] == " " else t for t in transcript]
+	print('Transcribed Lyrics (' + chosen_model + '):\n' + ' '.join(transcript))
+
 	return startEndTime, transcript
 
 #Approximate Algorithm returns a list of tuple of tuple ((start, end), lyric)
