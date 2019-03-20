@@ -58,7 +58,7 @@ def durationToSec(duration):
 #makes start and end times to seconds
 def convertToPython(wordInfo):
 	startEnd = {}
-#	print(wordInfo.word, wordInfo.start_time.seconds)
+#	print(wordInfo.word, wordInfo.start_time.seconds, wordInfo.start_time.nanos)
 	startEnd["word"] = wordInfo.word
 	startEnd["start"] = durationToSec(wordInfo.start_time)
 	startEnd["end"] = durationToSec(wordInfo.end_time)
@@ -226,7 +226,8 @@ def onsetModel(filepath, wordStartEndTime, lyrics):
 	wordPos = 0
 	for word in wordStartEndTime:
 		start = word['start']
-		end = word['end']	
+		end = word['end']
+		duration = end-start
 		#get number of syllables, i.e. onsets, we want
 		syllables = (dic.inserted(word["word"])).split("-")
 		desiredOnsets = len(syllables)
@@ -234,13 +235,13 @@ def onsetModel(filepath, wordStartEndTime, lyrics):
 		if wordPos == len(currLine) - 1:
 			moveToNextLine = True
 		#if it is single syllable
-		if desiredOnsets == 1:
+		if desiredOnsets == 1 or duration == 0:
 			emphasizedLine = " ".join(currLine[:wordPos] + ["***" + syllables[0] +"***"] + currLine[wordPos+1:])
 			syllModel.append(((start, end), emphasizedLine))
 		#if we have multiple syllables
 		else:
 			#get audio signal
-			audio, sr = librosa.load(filepath, offset = start, duration = end-start)
+			audio, sr = librosa.load(filepath, offset = start, duration = duration)
 	
 			#perform onset detection returns n onsets
 			onsetFrames = librosa.onset.onset_detect(y = audio, sr = sr)
