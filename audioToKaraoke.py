@@ -219,11 +219,11 @@ def onsetModel(filepath, lineStartEndTime):
 			#get number of syllables, i.e. onsets, we want
 			syllables = (dic.inserted(word["word"])).split("-")
 			desiredOnsets = len(syllables)
-			#if it is single syllable
-			if desiredOnsets == 1 or duration == 0:
-				emphasizedLine = " ".join(sepLine[:wordPos] + ["***" + syllables[0] +"***"] + sepLine[wordPos+1:])
+			#if duration is 0
+			if duration == 0 or desiredOnsets == 1:
+				emphasizedLine = " ".join(sepLine[:wordPos] + ["***" + word["word"] +"***"] + sepLine[wordPos+1:])
 				syllModel.append(((start, end), emphasizedLine))
-		#if we have multiple syllables
+			#if we have multiple syllables
 			else:
 				#get audio signal
 				audio, sr = librosa.load(filepath, offset = start, duration = duration)
@@ -235,8 +235,9 @@ def onsetModel(filepath, lineStartEndTime):
 				if len(onsetFrames) < desiredOnsets:
 					currStart = start
 					stepSize = (end - start)/desiredOnsets
-					for syll in syllables:
-						syllModel.append(((currStart, currStart+stepSize), syll))
+					for i, syll in enumerate(syllables):
+						emphasizedLine = " ".join(sepLine[:wordPos] + syllables[:i] + ["***" + syll +"***"] +syllables[i+1:] + sepLine[wordPos+1:])
+						syllModel.append(((start, end), emphasizedLine))
 						currStart += stepSize
 
 			#else, we need to find n highest peaks
@@ -262,7 +263,6 @@ def onsetModel(filepath, lineStartEndTime):
 						emphasizedLine = " ".join(sepLine[:wordPos] + syllables[:i] +["***" + syllables[i] + "***"] + syllables[i+1:] + sepLine[wordPos+1:])
 						syllModel.append(((syllStart, syllEnd), emphasizedLine))
 					emphasizedLine = " ".join(sepLine[:wordPos] + syllables[:desiredOnsets-1] +["***" + syllables[desiredOnsets-1] + "***"] + sepLine[wordPos+1:])
-
 					syllModel.append(((start + times[desiredOnsets-1], end), emphasizedLine))
 	return syllModel
 	
