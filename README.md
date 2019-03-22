@@ -34,3 +34,4 @@ What we have currently:
 Note: The code assumes that there is a directory heirarchy that must be followed:
   - The actual sound file needs to be put in soundfiles/background or soundfile/foreground assuming that the isolated vocals are in foreground
   - The video files will be generated and stored in movieFiles/Karaoke
+Removed Commit History because accidentally commited Google Credentials
