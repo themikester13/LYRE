@@ -1,0 +1,29 @@
+google-api-core==1.8.0
+google-api-python-client==1.7.8
+google-auth==1.6.3
+google-auth-httplib2==0.0.3
+google-cloud==0.34.0
+google-cloud-speech==0.36.3
+googleapis-common-protos==1.5.8
+imageio==2.5.0
+imageio-ffmpeg==0.2.0
+language-selector==0.1
+moviepy==1.0.0
+numpy==1.16.2
+oauthlib==1.0.3
+pydub==0.23.1
+Pyphen==0.9.5
+python-dotenv==0.10.1
+requests==2.21.0
+audioread >= 2.1.4
+jsonpickle >= 0.9.5
+librosa >= 0.6.2
+matplotlib >= 2.0.0
+mir_eval >= 0.4
+museval >= 0.2.0
+musdb >= 0.2.3
+pyyaml >= 3.12
+scipy >= 0.19.0
+six >= 1.10.0
+setuptools >= 36.0.1
+scikit-learn >= 0.19.1
